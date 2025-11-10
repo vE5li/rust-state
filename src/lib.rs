@@ -22,5 +22,5 @@ pub use macros::RustState;
 pub use manual::ManuallyAssertExt;
 pub use map::{MapItem, MapLookupExt};
 pub use option::OptionExt;
-pub use path::{AutoImplSelector, Path, Selector};
+pub use path::{AutoImplSelector, Path, PathExt, Selector, SelectorExt};
 pub use vec::{VecIndexExt, VecItem, VecLookupExt};

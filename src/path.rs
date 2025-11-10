@@ -44,6 +44,24 @@ pub trait Selector<State, To: ?Sized, const SAFE: bool = true>: 'static {
     fn select<'a>(&'a self, state: &'a State) -> Option<&'a To>;
 }
 
+/// Selector extension trait that allows selecting a safe selector to a `T` instead of an `Option<T>`.
+///
+/// See [`Selector`] for more documentation on paths.
+pub trait SelectorExt<State, To: ?Sized> {
+    /// Select the path and return a reference to its target.
+    fn select_safe<'a>(&'a self, state: &'a State) -> &'a To;
+}
+
+// Blanket impl
+impl<T, State, To> SelectorExt<State, To> for T
+where
+    T: Selector<State, To>,
+{
+    fn select_safe<'a>(&'a self, state: &'a State) -> &'a To {
+        self.select(state).unwrap()
+    }
+}
+
 /// Workaround for conflicting implementations when implementing [`Path`] for
 /// generic types.
 ///
@@ -116,4 +134,29 @@ pub trait Path<State, To: ?Sized, const SAFE: bool = true>: Selector<State, To, 
 
     /// Follow the path and try to return a mutable reference to its target.
     fn follow_mut<'a>(&self, state: &'a mut State) -> Option<&'a mut To>;
+}
+
+/// Path extension trait that allows following a safe path to a `T` instead of an `Option<T>`.
+///
+/// See [`Path`] for more documentation on paths.
+pub trait PathExt<State, To: ?Sized> {
+    /// Follow the path and return a reference to its target.
+    fn follow_safe<'a>(&self, state: &'a State) -> &'a To;
+
+    /// Follow the path and return a mutable reference to its target.
+    fn follow_mut_safe<'a>(&self, state: &'a mut State) -> &'a mut To;
+}
+
+// Blanket impl
+impl<T, State, To> PathExt<State, To> for T
+where
+    T: Path<State, To>,
+{
+    fn follow_safe<'a>(&self, state: &'a State) -> &'a To {
+        self.follow(state).unwrap()
+    }
+
+    fn follow_mut_safe<'a>(&self, state: &'a mut State) -> &'a mut To {
+        self.follow_mut(state).unwrap()
+    }
 }
