@@ -6,7 +6,7 @@
 //!
 //! Example:
 //! ```
-//! use rust_state::{AsRefExt, Context, Path, RustState};
+//! use rust_state::{AsRefExt, State, Path, RustState};
 //!
 //! #[derive(Debug, PartialEq, Eq)]
 //! struct TestItem {
@@ -15,17 +15,17 @@
 //!
 //! #[derive(RustState)]
 //! #[state_root]
-//! struct State {
+//! struct MyState {
 //!     inner: Box<TestItem>,
 //! }
 //!
-//! let context = Context::new(State {
+//! let state = State::new(MyState {
 //!     inner: Box::new(TestItem { value: 42 }),
 //! });
 //!
-//! let path = State::path().inner().path_as_ref();
+//! let path = MyState::path().inner().path_as_ref();
 //!
-//! assert_eq!(context.get(&path), TestItem { value : 42 });
+//! assert_eq!(state.get(&path), TestItem { value : 42 });
 //! ```
 
 use std::marker::PhantomData;

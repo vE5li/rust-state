@@ -3,21 +3,21 @@
 //!
 //! Example:
 //! ```
-//! use rust_state::{Context, ManuallyAssertExt, RustState, ArrayLookupExt};
+//! use rust_state::{State, ManuallyAssertExt, RustState, ArrayLookupExt};
 //!
 //! #[derive(RustState)]
 //! #[state_root]
-//! struct State {
+//! struct MyState {
 //!     items: [u32; 3],
 //! }
 //!
-//! let context = Context::new(State {
+//! let state = State::new(MyState {
 //!     items: [7, 8, 9],
 //! });
 //!
-//! let item_path = State::path().items().array_index(1);
+//! let item_path = MyState::path().items().array_index(1);
 //!
-//! assert_eq!(context.try_get(&item_path), Some(&8));
+//! assert_eq!(state.try_get(&item_path), Some(&8));
 //! ```
 
 use std::marker::PhantomData;

@@ -5,7 +5,7 @@
 //!
 //! Example:
 //! ```
-//! use rust_state::{Context, ManuallyAssertExt, RustState, VecItem, VecLookupExt};
+//! use rust_state::{State, ManuallyAssertExt, RustState, VecItem, VecLookupExt};
 //!
 //! struct TestItem {
 //!     id: u32,
@@ -21,19 +21,19 @@
 //!
 //! #[derive(RustState)]
 //! #[state_root]
-//! struct State {
+//! struct MyState {
 //!     items: Vec<TestItem>,
 //! }
 //!
-//! let context = Context::new(State {
+//! let state = State::new(MyState {
 //!     items: vec![TestItem { id: 10 }],
 //! });
 //!
 //! // We *know* that our item exists, so we can wrap the path with `manually_asserted`.
-//! let item_path = State::path().items().lookup(10).manually_asserted();
+//! let item_path = MyState::path().items().lookup(10).manually_asserted();
 //!
 //! // We can use `get` since the path is safe.
-//! assert_eq!(context.get(&item_path).id, 10);
+//! assert_eq!(state.get(&item_path).id, 10);
 //! ```
 
 use std::marker::PhantomData;

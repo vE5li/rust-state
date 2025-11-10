@@ -9,7 +9,7 @@
 /// An example of how this can be used:
 ///
 /// ```rust
-/// use rust_state::{Context, RustState, Selector};
+/// use rust_state::{State, RustState, Selector};
 ///
 /// #[derive(Default, RustState)]
 /// #[state_root]
@@ -24,12 +24,12 @@
 ///         Self(selector)
 ///     }
 ///
-///     pub fn do_work(&self, state: &Context<GlobalState>) {
+///     pub fn do_work(&self, state: &State<GlobalState>) {
 ///         let _: &u32 = state.get(&self.0);
 ///     }
 /// }
 ///
-/// let state = Context::new(GlobalState::default());
+/// let state = State::new(GlobalState::default());
 ///
 /// let uses_0 = Uses::new(GlobalState::path().number());
 /// let uses_1 = Uses::new(1u32);
@@ -44,7 +44,8 @@ pub trait Selector<State, To: ?Sized, const SAFE: bool = true>: 'static {
     fn select<'a>(&'a self, state: &'a State) -> Option<&'a To>;
 }
 
-/// Selector extension trait that allows selecting a safe selector to a `T` instead of an `Option<T>`.
+/// Selector extension trait that allows selecting a safe selector to a `T`
+/// instead of an `Option<T>`.
 ///
 /// See [`Selector`] for more documentation on paths.
 pub trait SelectorExt<State, To: ?Sized> {
@@ -86,14 +87,14 @@ where
 /// duplicate.
 ///
 /// Additionally, every path is forced to implement [`Selector`] to improve the
-/// ergonomics of the [`Context`].
+/// ergonomics of the [`State`].
 ///
 /// The [`Path`] trait is automatically implemented when deriving
 /// [`RustState`](crate::RustState).
 ///
 /// Example:
 ///```
-/// use rust_state::{Context, RustState, Path};
+/// use rust_state::{State, RustState, Path};
 ///
 /// #[derive(Default, RustState)]
 /// #[state_root]
@@ -110,7 +111,7 @@ where
 /// Paths can also be generated for generic types:
 ///
 /// ```
-/// use rust_state::{Context, RustState, Path};
+/// use rust_state::{State, RustState, Path};
 ///
 /// #[derive(Default, RustState)]
 /// #[state_root]
@@ -136,7 +137,8 @@ pub trait Path<State, To: ?Sized, const SAFE: bool = true>: Selector<State, To, 
     fn follow_mut<'a>(&self, state: &'a mut State) -> Option<&'a mut To>;
 }
 
-/// Path extension trait that allows following a safe path to a `T` instead of an `Option<T>`.
+/// Path extension trait that allows following a safe path to a `T` instead of
+/// an `Option<T>`.
 ///
 /// See [`Path`] for more documentation on paths.
 pub trait PathExt<State, To: ?Sized> {

@@ -1,4 +1,4 @@
-//! Module providing the [`Context`], which is the base type for state
+//! Module providing the [`State`], which is the base type for state
 //! management.
 
 use std::cell::UnsafeCell;
@@ -8,51 +8,66 @@ use crate::{MapItem, VecItem};
 
 /// Marker trait for the root of the state.
 ///
-/// This is only used when creating a new [`Context`].
+/// This is only used when creating a new [`State`].
 pub trait StateMarker {}
 
-type StateChange<State> = Box<dyn FnOnce(&mut State)>;
+/// Error returned when a state update fails.
+pub struct UpdateError {
+    /// The type name of the path that failed to update.
+    pub type_name: &'static str,
+}
+
+impl UpdateError {
+    /// Create an error for a given path type.
+    fn with_path<Path>() -> Self {
+        Self {
+            type_name: std::any::type_name::<Path>(),
+        }
+    }
+}
+
+type StateChange<State> = Box<dyn FnOnce(&mut State) -> Result<(), UpdateError>>;
 
 /// A wrapper around the root state. Can be read and mutated using
 /// [`Path`](crate::Path)s.
 ///
-/// The context allows you to work on data in the state and even keep
+/// The `State` wrapper allows you to work on data in the state and even keep
 /// immutable references to it while simultaneously queuing state
 /// changes on that same data.
-pub struct Context<State> {
-    state: State,
-    state_changes: UnsafeCell<Vec<StateChange<State>>>,
+pub struct State<Inner> {
+    state: Inner,
+    state_changes: UnsafeCell<Vec<StateChange<Inner>>>,
 }
 
-impl<State: StateMarker> Context<State> {
-    /// Create a new context for a root state.
+impl<Inner: StateMarker> State<Inner> {
+    /// Create a new state for a root state.
     ///
-    /// A context can only be created for the root state.
+    /// A state can only be created for the root state.
     ///
     /// You can mark the root of your state using the derive macro:
     ///
     /// ```
-    /// use rust_state::{Context, RustState};
+    /// use rust_state::{State, RustState};
     ///
     /// #[derive(RustState)]
     /// #[state_root]
     /// struct MyState;
     ///
-    /// let _ = Context::new(MyState);
+    /// let _ = State::new(MyState);
     /// ```
     ///
-    /// Trying to create a context for anything other than the root of the state
+    /// Trying to create a state for anything other than the root of the state
     /// will fail to compile.
     ///
     /// ```compile_fail
-    /// use rust_state::{Context, RustState};
+    /// use rust_state::{State, RustState};
     ///
     /// #[derive(RustState)]
     /// struct MyState;
     ///
-    /// let _ = Context::new(MyState);
+    /// let _ = State::new(MyState);
     /// ```
-    pub fn new(state: State) -> Self {
+    pub fn new(state: Inner) -> Self {
         Self {
             state,
             state_changes: UnsafeCell::new(Vec::new()),
@@ -60,8 +75,8 @@ impl<State: StateMarker> Context<State> {
     }
 }
 
-impl<State> Context<State> {
-    fn push_change(&self, state_change: StateChange<State>) {
+impl<Inner> State<Inner> {
+    fn push_change(&self, state_change: StateChange<Inner>) {
         let state_changes = unsafe { &mut *self.state_changes.get() };
         state_changes.push(state_change);
     }
@@ -70,7 +85,7 @@ impl<State> Context<State> {
     ///
     /// Example:
     /// ```
-    /// use rust_state::{Context, RustState};
+    /// use rust_state::{State, RustState};
     ///
     /// #[derive(RustState)]
     /// #[state_root]
@@ -78,22 +93,22 @@ impl<State> Context<State> {
     ///     value: u32,
     /// }
     ///
-    /// let mut context = Context::new(MyState { value: 5 });
+    /// let mut state = State::new(MyState { value: 5 });
     /// let value_path = MyState::path().value();
     ///
-    /// context.update_value(value_path, 10);
-    /// context.apply();
+    /// state.update_value(value_path, 10);
+    /// state.apply().unwrap();
     ///
-    /// assert_eq!(context.get(&value_path), &10);
+    /// assert_eq!(state.get(&value_path), &10);
     /// ```
     pub fn update_value<Path, Value, const SAFE: bool>(&self, path: Path, value: Value)
     where
-        Path: crate::Path<State, Value, SAFE>,
+        Path: crate::Path<Inner, Value, SAFE>,
         Value: 'static,
     {
-        self.push_change(Box::new(move |state: &mut State| match path.follow_mut(state) {
-            Some(reference) => *reference = value,
-            None => println!("Failed to update state"),
+        self.push_change(Box::new(move |state: &mut Inner| match path.follow_mut(state) {
+            Some(reference) => Ok(*reference = value),
+            None => Err(UpdateError::with_path::<Path>()),
         }));
     }
 
@@ -101,7 +116,7 @@ impl<State> Context<State> {
     ///
     /// Example:
     /// ```
-    /// use rust_state::{Context, RustState};
+    /// use rust_state::{State, RustState};
     ///
     /// #[derive(RustState)]
     /// #[state_root]
@@ -109,22 +124,22 @@ impl<State> Context<State> {
     ///     value: u32,
     /// }
     ///
-    /// let mut context = Context::new(MyState { value: 5 });
+    /// let mut state = State::new(MyState { value: 5 });
     /// let value_path = MyState::path().value();
     ///
-    /// context.update_value_with(value_path, |value| *value *= 2);
-    /// context.apply();
+    /// state.update_value_with(value_path, |value| *value *= 2);
+    /// state.apply().unwrap();
     ///
-    /// assert_eq!(context.get(&value_path), &10);
+    /// assert_eq!(state.get(&value_path), &10);
     /// ```
     pub fn update_value_with<Path, Value, F, const SAFE: bool>(&self, path: Path, closure: F)
     where
-        Path: crate::Path<State, Value, SAFE>,
+        Path: crate::Path<Inner, Value, SAFE>,
         F: Fn(&mut Value) + 'static,
     {
-        self.push_change(Box::new(move |state: &mut State| match path.follow_mut(state) {
-            Some(reference) => closure(reference),
-            None => println!("Failed to update state"),
+        self.push_change(Box::new(move |state: &mut Inner| match path.follow_mut(state) {
+            Some(reference) => Ok(closure(reference)),
+            None => Err(UpdateError::with_path::<Path>()),
         }));
     }
 
@@ -132,7 +147,7 @@ impl<State> Context<State> {
     ///
     /// Example:
     /// ```
-    /// use rust_state::{Context, RustState, VecItem};
+    /// use rust_state::{State, RustState, VecItem};
     ///
     /// struct TestItem {
     ///     id: u32,
@@ -152,22 +167,22 @@ impl<State> Context<State> {
     ///     items: Vec<TestItem>,
     /// }
     ///
-    /// let mut context = Context::new(MyState { items: Vec::new() });
+    /// let mut state = State::new(MyState { items: Vec::new() });
     /// let items_path = MyState::path().items();
     ///
-    /// context.vec_push(items_path, TestItem { id: 10 });
-    /// context.apply();
+    /// state.vec_push(items_path, TestItem { id: 10 });
+    /// state.apply().unwrap();
     ///
-    /// assert_eq!(context.get(&items_path).len(), 1);
+    /// assert_eq!(state.get(&items_path).len(), 1);
     /// ```
     pub fn vec_push<Path, Value, const SAFE: bool>(&self, path: Path, value: Value)
     where
-        Path: crate::Path<State, Vec<Value>, SAFE>,
+        Path: crate::Path<Inner, Vec<Value>, SAFE>,
         Value: 'static,
     {
-        self.push_change(Box::new(move |state: &mut State| match path.follow_mut(state) {
-            Some(reference) => reference.push(value),
-            None => println!("Failed to update state"),
+        self.push_change(Box::new(move |state: &mut Inner| match path.follow_mut(state) {
+            Some(reference) => Ok(reference.push(value)),
+            None => Err(UpdateError::with_path::<Path>()),
         }));
     }
 
@@ -175,7 +190,7 @@ impl<State> Context<State> {
     ///
     /// Example:
     /// ```
-    /// use rust_state::{Context, RustState, VecItem};
+    /// use rust_state::{State, RustState, VecItem};
     ///
     /// struct TestItem {
     ///     id: u32,
@@ -195,22 +210,22 @@ impl<State> Context<State> {
     ///     items: Vec<TestItem>,
     /// }
     ///
-    /// let mut context = Context::new(MyState { items: vec![TestItem { id: 10 }] });
+    /// let mut state = State::new(MyState { items: vec![TestItem { id: 10 }] });
     /// let items_path = MyState::path().items();
     ///
-    /// context.vec_remove(items_path, 10);
-    /// context.apply();
+    /// state.vec_remove(items_path, 10);
+    /// state.apply().unwrap();
     ///
-    /// assert_eq!(context.get(&items_path).len(), 0);
+    /// assert_eq!(state.get(&items_path).len(), 0);
     /// ```
     pub fn vec_remove<Path, Value, const SAFE: bool>(&self, path: Path, id: Value::Id)
     where
-        Path: crate::Path<State, Vec<Value>, SAFE>,
+        Path: crate::Path<Inner, Vec<Value>, SAFE>,
         Value: VecItem + 'static,
     {
-        self.push_change(Box::new(move |state: &mut State| match path.follow_mut(state) {
-            Some(reference) => reference.retain(|item| item.get_id() != id),
-            None => println!("Failed to update state"),
+        self.push_change(Box::new(move |state: &mut Inner| match path.follow_mut(state) {
+            Some(reference) => Ok(reference.retain(|item| item.get_id() != id)),
+            None => Err(UpdateError::with_path::<Path>()),
         }));
     }
 
@@ -219,7 +234,7 @@ impl<State> Context<State> {
     /// Example:
     /// ```
     /// use std::collections::HashMap;
-    /// use rust_state::{Context, RustState, MapItem};
+    /// use rust_state::{State, RustState, MapItem};
     ///
     /// struct TestItem;
     //
@@ -233,24 +248,25 @@ impl<State> Context<State> {
     ///     items: HashMap<u32, TestItem>,
     /// }
     ///
-    /// let mut context = Context::new(MyState { items: HashMap::new() });
+    /// let mut state = State::new(MyState { items: HashMap::new() });
     /// let items_path = MyState::path().items();
     ///
-    /// context.map_insert(items_path, 10, TestItem);
-    /// context.apply();
+    /// state.map_insert(items_path, 10, TestItem);
+    /// state.apply().unwrap();
     ///
-    /// assert_eq!(context.get(&items_path).len(), 1);
+    /// assert_eq!(state.get(&items_path).len(), 1);
     /// ```
     pub fn map_insert<Path, Value, const SAFE: bool>(&self, path: Path, id: Value::Id, value: Value)
     where
-        Path: crate::Path<State, HashMap<Value::Id, Value>, SAFE>,
+        Path: crate::Path<Inner, HashMap<Value::Id, Value>, SAFE>,
         Value: MapItem + 'static,
     {
-        self.push_change(Box::new(move |state: &mut State| match path.follow_mut(state) {
+        self.push_change(Box::new(move |state: &mut Inner| match path.follow_mut(state) {
             Some(reference) => {
                 reference.insert(id, value);
+                Ok(())
             }
-            None => println!("Failed to update state"),
+            None => Err(UpdateError::with_path::<Path>()),
         }));
     }
 
@@ -259,7 +275,7 @@ impl<State> Context<State> {
     /// Example:
     /// ```
     /// use std::collections::HashMap;
-    /// use rust_state::{Context, RustState, MapItem};
+    /// use rust_state::{State, RustState, MapItem};
     ///
     /// #[derive(Default)]
     /// struct TestItem;
@@ -274,24 +290,25 @@ impl<State> Context<State> {
     ///     items: HashMap<u32, TestItem>,
     /// }
     ///
-    /// let mut context = Context::new(MyState { items: HashMap::new() });
+    /// let mut state = State::new(MyState { items: HashMap::new() });
     /// let items_path = MyState::path().items();
     ///
-    /// context.map_insert_default(items_path, 10);
-    /// context.apply();
+    /// state.map_insert_default(items_path, 10);
+    /// state.apply().unwrap();
     ///
-    /// assert_eq!(context.get(&items_path).len(), 1);
+    /// assert_eq!(state.get(&items_path).len(), 1);
     /// ```
     pub fn map_insert_default<Path, Value, const SAFE: bool>(&self, path: Path, id: Value::Id)
     where
-        Path: crate::Path<State, HashMap<Value::Id, Value>, SAFE>,
+        Path: crate::Path<Inner, HashMap<Value::Id, Value>, SAFE>,
         Value: MapItem + Default + 'static,
     {
-        self.push_change(Box::new(move |state: &mut State| match path.follow_mut(state) {
+        self.push_change(Box::new(move |state: &mut Inner| match path.follow_mut(state) {
             Some(reference) => {
                 reference.entry(id).or_default();
+                Ok(())
             }
-            None => println!("Failed to update state"),
+            None => Err(UpdateError::with_path::<Path>()),
         }));
     }
 
@@ -300,7 +317,7 @@ impl<State> Context<State> {
     /// Example:
     /// ```
     /// use std::collections::HashMap;
-    /// use rust_state::{Context, RustState, MapItem};
+    /// use rust_state::{State, RustState, MapItem};
     ///
     /// struct TestItem;
     //
@@ -314,24 +331,27 @@ impl<State> Context<State> {
     ///     items: HashMap<u32, TestItem>,
     /// }
     ///
-    /// let mut context = Context::new(MyState { items: HashMap::from([(10,
-    /// TestItem)]) }); let items_path = MyState::path().items();
+    /// let mut state = State::new(MyState {
+    ///     items: HashMap::from([(10, TestItem)]),
+    /// });
+    /// let items_path = MyState::path().items();
     ///
-    /// context.map_remove(items_path, 10);
-    /// context.apply();
+    /// state.map_remove(items_path, 10);
+    /// state.apply().unwrap();
     ///
-    /// assert_eq!(context.get(&items_path).len(), 0);
+    /// assert_eq!(state.get(&items_path).len(), 0);
     /// ```
     pub fn map_remove<Path, Value, const SAFE: bool>(&self, path: Path, id: Value::Id)
     where
-        Path: crate::Path<State, HashMap<Value::Id, Value>, SAFE>,
+        Path: crate::Path<Inner, HashMap<Value::Id, Value>, SAFE>,
         Value: MapItem + 'static,
     {
-        self.push_change(Box::new(move |state: &mut State| match path.follow_mut(state) {
+        self.push_change(Box::new(move |state: &mut Inner| match path.follow_mut(state) {
             Some(reference) => {
                 reference.remove(&id);
+                Ok(())
             }
-            None => println!("Failed to update state"),
+            None => Err(UpdateError::with_path::<Path>()),
         }));
     }
 
@@ -339,7 +359,7 @@ impl<State> Context<State> {
     ///
     /// Example:
     /// ```
-    /// use rust_state::{Context, RustState};
+    /// use rust_state::{State, RustState};
     ///
     /// #[derive(RustState)]
     /// #[state_root]
@@ -347,21 +367,30 @@ impl<State> Context<State> {
     ///     value: &'static str,
     /// }
     ///
-    /// let mut context = Context::new(MyState { value: "Before" });
+    /// let mut state = State::new(MyState { value: "Before" });
     /// let value_path = MyState::path().value();
     ///
-    /// context.update_value(value_path, "After");
+    /// state.update_value(value_path, "After");
     ///
-    /// assert_eq!(context.get(&value_path), &"Before");
+    /// assert_eq!(state.get(&value_path), &"Before");
     ///
-    /// context.apply();
+    /// state.apply().unwrap();
     ///
-    /// assert_eq!(context.get(&value_path), &"After");
+    /// assert_eq!(state.get(&value_path), &"After");
     /// ```
-    pub fn apply(&mut self) {
-        UnsafeCell::get_mut(&mut self.state_changes)
-            .drain(..)
-            .for_each(|apply| apply(&mut self.state));
+    pub fn apply(&mut self) -> Result<(), Vec<UpdateError>> {
+        let mut errors = Vec::new();
+
+        for apply in UnsafeCell::get_mut(&mut self.state_changes).drain(..) {
+            if let Err(error) = apply(&mut self.state) {
+                errors.push(error);
+            }
+        }
+
+        match errors.is_empty() {
+            true => Ok(()),
+            false => Err(errors),
+        }
     }
 
     /// Get the output of a safe selector.
@@ -374,7 +403,7 @@ impl<State> Context<State> {
     /// or the [`Selector`](crate::Selector) trait is implemented incorrectly.
     pub fn get<'a, Selector, Output>(&'a self, selector: &'a Selector) -> &'a Output
     where
-        Selector: crate::Selector<State, Output>,
+        Selector: crate::Selector<Inner, Output>,
         Output: ?Sized,
     {
         selector.select(&self.state).unwrap()
@@ -390,7 +419,7 @@ impl<State> Context<State> {
     /// [`try_get_any`](Self::try_get_any).
     pub fn try_get<'a, Selector, Output>(&'a self, selector: &'a Selector) -> Option<&'a Output>
     where
-        Selector: crate::Selector<State, Output, false>,
+        Selector: crate::Selector<Inner, Output, false>,
         Output: ?Sized,
     {
         selector.select(&self.state)
@@ -405,7 +434,7 @@ impl<State> Context<State> {
     /// otherwise.
     pub fn try_get_any<Selector, Output, const SAFE: bool>(&self, selector: Selector) -> Option<&'_ Output>
     where
-        Selector: crate::Path<State, Output, SAFE>,
+        Selector: crate::Path<Inner, Output, SAFE>,
         Output: ?Sized,
     {
         selector.follow(&self.state)
@@ -421,7 +450,7 @@ impl<State> Context<State> {
     /// or the [`Path`](crate::Path) trait is implemented incorrectly.
     pub fn follow<Path, Output>(&self, path: Path) -> &Output
     where
-        Path: crate::Path<State, Output>,
+        Path: crate::Path<Inner, Output>,
         Output: ?Sized,
     {
         path.follow(&self.state).unwrap()
@@ -437,7 +466,7 @@ impl<State> Context<State> {
     /// [`try_follow_any`](Self::try_follow_any).
     pub fn try_follow<Path, Output>(&self, path: Path) -> Option<&Output>
     where
-        Path: crate::Path<State, Output, false>,
+        Path: crate::Path<Inner, Output, false>,
         Output: ?Sized,
     {
         path.follow(&self.state)
@@ -452,7 +481,7 @@ impl<State> Context<State> {
     /// otherwise.
     pub fn try_follow_any<Path, Output, const SAFE: bool>(&self, path: Path) -> Option<&Output>
     where
-        Path: crate::Path<State, Output, SAFE>,
+        Path: crate::Path<Inner, Output, SAFE>,
         Output: ?Sized,
     {
         path.follow(&self.state)
@@ -468,7 +497,7 @@ impl<State> Context<State> {
     /// or the [`Path`](crate::Path) trait is implemented incorrectly.
     pub fn follow_mut<Path, Output>(&mut self, path: Path) -> &mut Output
     where
-        Path: crate::Path<State, Output>,
+        Path: crate::Path<Inner, Output>,
         Output: ?Sized,
     {
         path.follow_mut(&mut self.state).unwrap()
@@ -484,7 +513,7 @@ impl<State> Context<State> {
     /// [`try_follow_any_mut`](Self::try_follow_any_mut).
     pub fn try_follow_mut<Path, Output>(&mut self, path: Path) -> Option<&mut Output>
     where
-        Path: crate::Path<State, Output, false>,
+        Path: crate::Path<Inner, Output, false>,
         Output: ?Sized,
     {
         path.follow_mut(&mut self.state)
@@ -499,7 +528,7 @@ impl<State> Context<State> {
     /// [`try_follow`](Self::try_follow_mut) otherwise.
     pub fn try_follow_any_mut<Path, Output, const SAFE: bool>(&mut self, path: Path) -> Option<&mut Output>
     where
-        Path: crate::Path<State, Output, SAFE>,
+        Path: crate::Path<Inner, Output, SAFE>,
         Output: ?Sized,
     {
         path.follow_mut(&mut self.state)

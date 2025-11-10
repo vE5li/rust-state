@@ -3,7 +3,7 @@
 //! Example:
 //! ```
 //! use std::collections::HashMap;
-//! use rust_state::{Context, ManuallyAssertExt, RustState, MapItem, MapLookupExt};
+//! use rust_state::{State, ManuallyAssertExt, RustState, MapItem, MapLookupExt};
 //!
 //! #[derive(Debug, PartialEq, Eq)]
 //! struct TestItem;
@@ -14,17 +14,17 @@
 //!
 //! #[derive(RustState)]
 //! #[state_root]
-//! struct State {
+//! struct MyState {
 //!     items: HashMap<u32, TestItem>,
 //! }
 //!
-//! let context = Context::new(State {
+//! let state = State::new(MyState {
 //!     items: HashMap::from([(10, TestItem)]),
 //! });
 //!
-//! let item_path = State::path().items().lookup(10);
+//! let item_path = MyState::path().items().lookup(10);
 //!
-//! assert_eq!(context.try_get(&item_path), Some(&TestItem));
+//! assert_eq!(state.try_get(&item_path), Some(&TestItem));
 //! ```
 
 use std::collections::HashMap;

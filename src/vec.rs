@@ -12,7 +12,7 @@
 //!
 //! Example:
 //! ```
-//! use rust_state::{Context, ManuallyAssertExt, RustState, VecItem, VecLookupExt};
+//! use rust_state::{State, ManuallyAssertExt, RustState, VecItem, VecLookupExt};
 //!
 //! #[derive(Debug, PartialEq, Eq)]
 //! struct TestItem {
@@ -29,21 +29,21 @@
 //!
 //! #[derive(RustState)]
 //! #[state_root]
-//! struct State {
+//! struct MyState {
 //!     items: Vec<TestItem>,
 //! }
 //!
-//! let context = Context::new(State {
+//! let state = State::new(MyState {
 //!     items: vec![TestItem { id: 10 }],
 //! });
 //!
-//! let lookup_path = State::path().items().lookup(10);
+//! let lookup_path = MyState::path().items().lookup(10);
 //!
-//! assert_eq!(context.try_get(&lookup_path), Some(&TestItem { id: 10 }));
+//! assert_eq!(state.try_get(&lookup_path), Some(&TestItem { id: 10 }));
 //!
-//! let index_path = State::path().items().index(0);
+//! let index_path = MyState::path().items().index(0);
 //!
-//! assert_eq!(context.try_get(&index_path), Some(&TestItem { id: 10 }));
+//! assert_eq!(state.try_get(&index_path), Some(&TestItem { id: 10 }));
 //! ```
 
 use std::hash::Hash;

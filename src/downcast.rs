@@ -6,7 +6,7 @@
 //!
 //! Example:
 //! ```
-//! use rust_state::{Context, DowncastExt, Path, RustState};
+//! use rust_state::{State, DowncastExt, Path, RustState};
 //! use std::any::Any;
 //!
 //! #[derive(Debug, PartialEq, Eq)]
@@ -16,17 +16,17 @@
 //!
 //! #[derive(RustState)]
 //! #[state_root]
-//! struct State {
+//! struct MyState {
 //!     dynamic: Box<dyn Any>,
 //! }
 //!
-//! let context = Context::new(State {
+//! let state = State::new(MyState {
 //!     dynamic: Box::new(Inner { value: 99 }),
 //! });
 //!
-//! let path = State::path().dynamic().downcast::<Inner>();
+//! let path = MyState::path().dynamic().downcast::<Inner>();
 //!
-//! assert_eq!(context.try_get(&path), Some(Inner { value: 99 }));
+//! assert_eq!(state.try_get(&path), Some(Inner { value: 99 }));
 //! ```
 
 use std::any::Any;
