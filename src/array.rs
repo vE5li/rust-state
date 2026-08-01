@@ -3,6 +3,7 @@
 //!
 //! Example:
 //! ```
+//! #![feature(auto_traits, negative_impls)]
 //! use rust_state::{State, ManuallyAssertExt, RustState, ArrayLookupExt};
 //!
 //! #[derive(RustState)]

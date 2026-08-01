@@ -12,6 +12,7 @@ use crate::{MapItem, VecItem};
 pub trait StateMarker {}
 
 /// Error returned when a state update fails.
+#[derive(Debug)]
 pub struct UpdateError {
     /// The type name of the path that failed to update.
     pub type_name: &'static str,
@@ -47,6 +48,7 @@ impl<Inner: StateMarker> State<Inner> {
     /// You can mark the root of your state using the derive macro:
     ///
     /// ```
+    /// #![feature(auto_traits, negative_impls)]
     /// use rust_state::{State, RustState};
     ///
     /// #[derive(RustState)]
@@ -60,6 +62,7 @@ impl<Inner: StateMarker> State<Inner> {
     /// will fail to compile.
     ///
     /// ```compile_fail
+    /// #![feature(auto_traits, negative_impls)]
     /// use rust_state::{State, RustState};
     ///
     /// #[derive(RustState)]
@@ -85,6 +88,7 @@ impl<Inner> State<Inner> {
     ///
     /// Example:
     /// ```
+    /// #![feature(auto_traits, negative_impls)]
     /// use rust_state::{State, RustState};
     ///
     /// #[derive(RustState)]
@@ -116,6 +120,7 @@ impl<Inner> State<Inner> {
     ///
     /// Example:
     /// ```
+    /// #![feature(auto_traits, negative_impls)]
     /// use rust_state::{State, RustState};
     ///
     /// #[derive(RustState)]
@@ -147,6 +152,7 @@ impl<Inner> State<Inner> {
     ///
     /// Example:
     /// ```
+    /// #![feature(auto_traits, negative_impls)]
     /// use rust_state::{State, RustState, VecItem};
     ///
     /// struct TestItem {
@@ -190,6 +196,7 @@ impl<Inner> State<Inner> {
     ///
     /// Example:
     /// ```
+    /// #![feature(auto_traits, negative_impls)]
     /// use rust_state::{State, RustState, VecItem};
     ///
     /// struct TestItem {
@@ -233,6 +240,7 @@ impl<Inner> State<Inner> {
     ///
     /// Example:
     /// ```
+    /// #![feature(auto_traits, negative_impls)]
     /// use std::collections::HashMap;
     /// use rust_state::{State, RustState, MapItem};
     ///
@@ -274,6 +282,7 @@ impl<Inner> State<Inner> {
     ///
     /// Example:
     /// ```
+    /// #![feature(auto_traits, negative_impls)]
     /// use std::collections::HashMap;
     /// use rust_state::{State, RustState, MapItem};
     ///
@@ -316,6 +325,7 @@ impl<Inner> State<Inner> {
     ///
     /// Example:
     /// ```
+    /// #![feature(auto_traits, negative_impls)]
     /// use std::collections::HashMap;
     /// use rust_state::{State, RustState, MapItem};
     ///
@@ -359,6 +369,7 @@ impl<Inner> State<Inner> {
     ///
     /// Example:
     /// ```
+    /// #![feature(auto_traits, negative_impls)]
     /// use rust_state::{State, RustState};
     ///
     /// #[derive(RustState)]

@@ -6,6 +6,7 @@
 //!
 //! Example:
 //! ```
+//! #![feature(auto_traits, negative_impls)]
 //! use rust_state::{State, ManuallyAssertExt, OptionExt, Path, RustState};
 //!
 //! #[derive(Debug, PartialEq, Eq)]

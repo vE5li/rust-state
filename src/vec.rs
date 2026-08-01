@@ -12,7 +12,8 @@
 //!
 //! Example:
 //! ```
-//! use rust_state::{State, ManuallyAssertExt, RustState, VecItem, VecLookupExt};
+//! #![feature(auto_traits, negative_impls)]
+//! use rust_state::{State, ManuallyAssertExt, RustState, VecIndexExt, VecItem, VecLookupExt};
 //!
 //! #[derive(Debug, PartialEq, Eq)]
 //! struct TestItem {

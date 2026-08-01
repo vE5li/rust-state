@@ -9,6 +9,7 @@
 /// An example of how this can be used:
 ///
 /// ```rust
+/// #![feature(auto_traits, negative_impls)]
 /// use rust_state::{State, RustState, Selector};
 ///
 /// #[derive(Default, RustState)]
@@ -94,6 +95,7 @@ where
 ///
 /// Example:
 ///```
+/// #![feature(auto_traits, negative_impls)]
 /// use rust_state::{State, RustState, Path};
 ///
 /// #[derive(Default, RustState)]
@@ -111,6 +113,7 @@ where
 /// Paths can also be generated for generic types:
 ///
 /// ```
+/// #![feature(auto_traits, negative_impls)]
 /// use rust_state::{State, RustState, Path};
 ///
 /// #[derive(Default, RustState)]

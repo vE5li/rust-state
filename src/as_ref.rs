@@ -6,6 +6,7 @@
 //!
 //! Example:
 //! ```
+//! #![feature(auto_traits, negative_impls)]
 //! use rust_state::{AsRefExt, State, Path, RustState};
 //!
 //! #[derive(Debug, PartialEq, Eq)]
@@ -25,7 +26,7 @@
 //!
 //! let path = MyState::path().inner().path_as_ref();
 //!
-//! assert_eq!(state.get(&path), TestItem { value : 42 });
+//! assert_eq!(state.get(&path), &TestItem { value: 42 });
 //! ```
 
 use std::marker::PhantomData;

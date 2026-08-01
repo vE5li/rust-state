@@ -2,6 +2,7 @@
 //!
 //! Example:
 //! ```
+//! #![feature(auto_traits, negative_impls)]
 //! use std::collections::HashMap;
 //! use rust_state::{State, ManuallyAssertExt, RustState, MapItem, MapLookupExt};
 //!

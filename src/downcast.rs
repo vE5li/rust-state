@@ -6,6 +6,7 @@
 //!
 //! Example:
 //! ```
+//! #![feature(auto_traits, negative_impls)]
 //! use rust_state::{State, DowncastExt, Path, RustState};
 //! use std::any::Any;
 //!
@@ -26,7 +27,7 @@
 //!
 //! let path = MyState::path().dynamic().downcast::<Inner>();
 //!
-//! assert_eq!(state.try_get(&path), Some(Inner { value: 99 }));
+//! assert_eq!(state.try_get(&path), Some(&Inner { value: 99 }));
 //! ```
 
 use std::any::Any;
